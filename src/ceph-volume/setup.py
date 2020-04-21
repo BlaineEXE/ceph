@@ -13,6 +13,8 @@ setup(
     keywords='ceph volume disk devices lvm',
     url="https://github.com/ceph/ceph",
     zip_safe = False,
+    install_requires='ceph',
+    dependency_links=['file://../python-common#egg=ceph-1.0.0'],
     tests_require=[
         'pytest >=2.1.3',
         'tox',

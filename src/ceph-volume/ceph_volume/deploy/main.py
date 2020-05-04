@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import sys
+from io import StringIO
 
 from ceph.deployment.drive_group import DriveGroupSpec
 from ceph.deployment.drive_selection.selector import DriveSelection
@@ -28,11 +29,17 @@ class Deploy(object):
             formatter_class=argparse.RawDescriptionHelpFormatter,
             description=self.help,
         )
+        # TODO: add arg for hostname, and validate the host name in c-v using Ceph's library
+        #       return success if hostname does not match
         parser.add_argument(
-            'path',
-            nargs='?',
+            '--path',
             default=None,
             help=('Path to file containing drive group spec'),
+        )
+        parser.add_argument(
+            '--spec',
+            default=None,
+            help=('JSON-formatted Drive Group spec')
         )
         parser.add_argument(
             '--dry-run',
@@ -45,14 +52,22 @@ class Deploy(object):
         if self.args.path:
             with open(self.args.path, 'r') as f:
                 commands = self.from_json(f)
+        elif self.args.spec:
+            logger.info('spec {}'.format(self.args.spec))
+            with StringIO(self.args.spec) as f:
+                commands = self.from_json(f)
         else:
             commands = self.from_json(sys.stdin)
         cmd = commands.run()
-        logger.info('running {}'.format(cmd))
-        args = cmd.split(' ')[2:]
+        if not cmd:
+            logger.info('No commands to run for Drive Group')
+            return
+        logger.info('Commands to run for Drive Group: {}'.format(cmd))
         if self.args.dry_run:
-            print(cmd)
+            print('Commands to run for Drive Group: {}'.format(cmd))
         else:
+            # command is in the form 'lvm batch ...', so grab only the '...' section
+            args = cmd.split(' ')[2:]
             b = Batch(args)
             b.main()
 
